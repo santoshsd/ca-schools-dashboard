@@ -63,23 +63,25 @@ A developer platform that exposes California K-12 education data through RESTful
 - `client/src/pages/` - React pages (landing, dashboard, docs, explorer, auth)
 
 ## Azure Deployment
-- **Target**: Azure App Service (Linux container) + Azure Database for PostgreSQL Flexible Server
+- **Target**: Azure App Service (Linux, Node.js 20) + Azure Database for PostgreSQL Flexible Server
 - **Custom Domain**: cadashboard.s13i.me
-- **Docker**: Multi-stage build, production image runs `node dist/index.cjs` on port 8080
-- **Infrastructure**: Azure Bicep templates in `azure/main.bicep`
-- **CI/CD**: GitHub Actions workflow in `.github/workflows/deploy-azure.yml`
-- **Deploy Script**: `azure/deploy.sh` for initial setup
+- **Estimated Cost**: ~$26/month (B1 App Service + B1ms PostgreSQL)
+
+### Deployment Options (no local installs needed)
+1. **Azure Cloud Shell** (recommended): `bash azure/cloud-shell-deploy.sh` — runs in browser
+2. **Azure Portal UI**: Follow step-by-step guide in `azure/PORTAL-DEPLOY-GUIDE.md`
+3. **Docker container**: Use `Dockerfile` + `azure/main.bicep` + `azure/deploy.sh`
+4. **GitHub Actions CI/CD**: `.github/workflows/deploy-azure.yml` for automatic deploys
+
+### Azure Infrastructure Files
+- `azure/main-nodejs.bicep` - Bicep template for Node.js App Service (no Docker)
+- `azure/main.bicep` - Bicep template for Docker container deployment
+- `azure/cloud-shell-deploy.sh` - One-command deploy via Azure Cloud Shell
+- `azure/deploy.sh` - Deploy script for Docker-based deployment
+- `azure/PORTAL-DEPLOY-GUIDE.md` - Full portal walkthrough guide
 
 ### Azure Environment Variables
 - `DATABASE_URL` - PostgreSQL connection string with `?sslmode=require`
 - `SESSION_SECRET` - Express session secret
 - `PORT` - App port (8080 for Azure)
 - `NODE_ENV` - Set to `production`
-- `WEBSITES_PORT` - Azure App Service port mapping (8080)
-
-### Deploy Steps
-1. `az group create` - Create resource group
-2. `az deployment group create` - Deploy Bicep template
-3. `docker build && docker push` - Build and push container to ACR
-4. `npx drizzle-kit push` - Run database migrations
-5. Configure custom domain CNAME and SSL
