@@ -30,6 +30,12 @@ const allowlist = [
   "xlsx",
   "zod",
   "zod-validation-error",
+  "openid-client",
+  "node-cron",
+  "memoizee",
+  "p-limit",
+  "p-retry",
+  "csv-parse",
 ];
 
 async function buildAll() {

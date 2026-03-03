@@ -1,0 +1,65 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: ca-school-dashboard-rg
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get ACR credentials
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list -g $AZURE_RESOURCE_GROUP --query "[0].name" -o tsv)
+          ACR_SERVER=$(az acr show -n $ACR_NAME --query loginServer -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "server=$ACR_SERVER" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ steps.acr.outputs.server }}/cadashboard:${{ github.sha }} \
+                       -t ${{ steps.acr.outputs.server }}/cadashboard:latest .
+          docker push ${{ steps.acr.outputs.server }}/cadashboard:${{ github.sha }}
+          docker push ${{ steps.acr.outputs.server }}/cadashboard:latest
+
+      - name: Deploy to App Service
+        run: |
+          APP_NAME=$(az webapp list -g $AZURE_RESOURCE_GROUP --query "[0].name" -o tsv)
+          az webapp config container set \
+            --name $APP_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --container-image-name ${{ steps.acr.outputs.server }}/cadashboard:${{ github.sha }}
+          az webapp restart --name $APP_NAME --resource-group $AZURE_RESOURCE_GROUP
+
+      - name: Wait for deployment
+        run: |
+          APP_NAME=$(az webapp list -g $AZURE_RESOURCE_GROUP --query "[0].name" -o tsv)
+          APP_URL=$(az webapp show -n $APP_NAME -g $AZURE_RESOURCE_GROUP --query defaultHostName -o tsv)
+          echo "Waiting for app to be healthy..."
+          for i in {1..30}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_URL/api/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "App is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, waiting..."
+            sleep 10
+          done
+          echo "WARNING: App may not be healthy yet"

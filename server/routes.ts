@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { setupAuthAdapter, getIsAuthenticated } from "./auth-adapter";
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 
@@ -62,8 +62,17 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const stats = await storage.getOverviewStats();
+      res.json({ status: "healthy", timestamp: new Date().toISOString(), database: "connected", data: { counties: stats.counties, schools: stats.schools } });
+    } catch (e) {
+      res.status(503).json({ status: "unhealthy", timestamp: new Date().toISOString(), database: "disconnected" });
+    }
+  });
+
+  await setupAuthAdapter(app);
+  const isAuthenticated = getIsAuthenticated();
 
   app.get("/api/v1/counties", authenticateApiKey, async (req, res) => {
     try {
