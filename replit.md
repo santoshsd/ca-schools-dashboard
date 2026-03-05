@@ -14,9 +14,10 @@ A developer platform that exposes California K-12 education data through RESTful
 1. RESTful API (v1) with API key authentication
 2. Developer portal with documentation, API explorer
 3. API key management and usage metering
-4. Data ingestion monitoring agent (weekly checks)
-5. Seed data for 16 counties, 20 districts, 20 schools, 7 indicators, 14 student groups
-6. Health check endpoint at `/api/health`
+4. Real CDE data: 58 counties, 1,443 districts, 10,587 schools, 373,929 performance records
+5. Data ingestion from CDE public data files (graduation rate, suspension rate)
+6. Weekly monitoring agent checks CDE data sources for updates
+7. Health check endpoint at `/api/health`
 
 ## Data Model
 - **Counties** → **Districts** → **Schools** (hierarchical)
@@ -57,8 +58,9 @@ A developer platform that exposes California K-12 education data through RESTful
 - `shared/schema.ts` - All Drizzle schemas and types
 - `server/routes.ts` - API routes
 - `server/storage.ts` - Database storage layer
-- `server/seed.ts` - Seed data
-- `server/ingestion-agent.ts` - Data monitoring agent
+- `server/seed.ts` - Fallback seed data (not used when real CDE data is present)
+- `server/ingest-cde-data.ts` - Real CDE data ingestion script
+- `server/ingestion-agent.ts` - Weekly CDE data source monitoring agent
 - `server/auth-adapter.ts` - Auth adapter (Replit vs standalone)
 - `client/src/pages/` - React pages (landing, dashboard, docs, explorer, auth)
 

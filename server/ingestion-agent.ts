@@ -2,29 +2,24 @@ import { storage } from "./storage";
 
 const CDE_DATA_SOURCES = [
   {
-    name: "CA School Dashboard - Academic Performance",
-    url: "https://www.caschooldashboard.org/",
-    category: "Academic",
+    name: "CDE Public Schools Directory",
+    url: "https://www.cde.ca.gov/schooldirectory/report?rid=dl1&tp=txt",
+    category: "Directory",
   },
   {
-    name: "CA School Dashboard - Graduation Rate",
-    url: "https://www.caschooldashboard.org/",
+    name: "CDE Graduation Rate",
+    url: "https://www3.cde.ca.gov/demo-downloads/acgr/acgr24.txt",
     category: "Engagement",
   },
   {
-    name: "CA School Dashboard - Chronic Absenteeism",
-    url: "https://www.caschooldashboard.org/",
-    category: "Engagement",
-  },
-  {
-    name: "CA School Dashboard - Suspension Rate",
-    url: "https://www.caschooldashboard.org/",
+    name: "CDE Suspension Rate",
+    url: "https://www3.cde.ca.gov/demo-downloads/discipline/suspension24.txt",
     category: "Climate",
   },
 ];
 
 async function checkForNewData() {
-  console.log("[Ingestion Agent] Checking for new data from CA School Dashboard...");
+  console.log("[Ingestion Agent] Checking CDE data sources for updates...");
 
   for (const source of CDE_DATA_SOURCES) {
     const log = await storage.createIngestionLog({
@@ -38,24 +33,26 @@ async function checkForNewData() {
     try {
       const response = await fetch(source.url, {
         method: "HEAD",
-        signal: AbortSignal.timeout(10000),
+        headers: { "User-Agent": "Mozilla/5.0 (CASchoolDashboardAPI/1.0)" },
+        signal: AbortSignal.timeout(15000),
       });
 
       if (response.ok) {
         const lastModified = response.headers.get("last-modified");
+        const contentLength = response.headers.get("content-length");
         await storage.updateIngestionLog(log.id, {
           status: "completed",
-          details: `Source accessible. Last-Modified: ${lastModified || "unknown"}. No new data detected for ingestion.`,
+          details: `Source accessible. Last-Modified: ${lastModified || "unknown"}. Content-Length: ${contentLength || "unknown"}. Run 'npx tsx server/ingest-cde-data.ts' to re-import.`,
           completedAt: new Date(),
         });
-        console.log(`[Ingestion Agent] ${source.name}: Source accessible, no new data to ingest.`);
+        console.log(`[Ingestion Agent] ${source.name}: Accessible (Last-Modified: ${lastModified || "unknown"})`);
       } else {
         await storage.updateIngestionLog(log.id, {
           status: "warning",
-          details: `Source returned status ${response.status}`,
+          details: `Source returned HTTP ${response.status}`,
           completedAt: new Date(),
         });
-        console.log(`[Ingestion Agent] ${source.name}: Source returned ${response.status}`);
+        console.log(`[Ingestion Agent] ${source.name}: HTTP ${response.status}`);
       }
     } catch (error: any) {
       await storage.updateIngestionLog(log.id, {

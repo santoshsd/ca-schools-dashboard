@@ -22,7 +22,7 @@ export const districts = pgTable("districts", {
   code: varchar("code", { length: 20 }).notNull().unique(),
   name: text("name").notNull(),
   countyId: integer("county_id").notNull().references(() => counties.id),
-  type: varchar("type", { length: 30 }).notNull().default("district"),
+  type: varchar("type", { length: 100 }).notNull().default("district"),
 });
 
 export const districtsRelations = relations(districts, ({ one, many }) => ({
@@ -36,8 +36,8 @@ export const schools = pgTable("schools", {
   name: text("name").notNull(),
   districtId: integer("district_id").notNull().references(() => districts.id),
   countyId: integer("county_id").notNull().references(() => counties.id),
-  type: varchar("type", { length: 30 }).notNull().default("school"),
-  gradeSpan: varchar("grade_span", { length: 20 }),
+  type: varchar("type", { length: 100 }).notNull().default("school"),
+  gradeSpan: varchar("grade_span", { length: 50 }),
   latitude: real("latitude"),
   longitude: real("longitude"),
   address: text("address"),

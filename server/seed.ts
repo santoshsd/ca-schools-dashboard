@@ -5,11 +5,12 @@ import { count } from "drizzle-orm";
 export async function seedDatabase() {
   const [existing] = await db.select({ count: count() }).from(counties);
   if (existing.count > 0) {
-    console.log("Database already seeded, skipping...");
+    console.log("Database already has data (real CDE data), skipping seed...");
     return;
   }
 
-  console.log("Seeding database with California school data...");
+  console.log("No data found. Run 'npx tsx server/ingest-cde-data.ts' to import real CDE data.");
+  console.log("Seeding database with minimal development data...");
 
   const countyData = [
     { code: "01", name: "Alameda", type: "county" },
