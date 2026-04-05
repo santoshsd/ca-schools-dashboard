@@ -10,13 +10,19 @@ export const sessions = pgTable(
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)]
+  (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // SCHEMA-05: email is nullable (Replit-auth users may not provide one).
+  // The standard UNIQUE constraint correctly allows multiple NULLs in
+  // PostgreSQL while still preventing duplicate non-null emails.
+  // A partial unique index (WHERE email IS NOT NULL) is added in the SQL
+  // migration file as explicit documentation of intent; the behavior is
+  // identical to the standard constraint for non-null values.
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

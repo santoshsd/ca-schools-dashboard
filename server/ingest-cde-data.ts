@@ -416,10 +416,14 @@ async function ingestGraduationData(
 
     // Batch errors propagate: a failure rolls back the enclosing transaction
     // rather than leaving half the file in place.
+    // onConflictDoNothing() is a safety net against duplicate rows that may
+    // appear if CDE source data contains repeated (school, indicator, year)
+    // combinations.  The unique index idx_perf_dedupe enforces deduplication;
+    // any such row is silently skipped rather than aborting the whole batch.
     for (let i = 0; i < batch.length; i += 2000) {
       const slice = batch.slice(i, i + 2000);
       try {
-        await tx.insert(performanceData).values(slice);
+        await tx.insert(performanceData).values(slice).onConflictDoNothing();
       } catch (e: any) {
         throw new Error(
           `Batch insert error (graduation ${fileKey}, rows ${i}..${i + slice.length}): ${e.message}`,
@@ -553,7 +557,7 @@ async function ingestSuspensionData(
     for (let i = 0; i < batch.length; i += 2000) {
       const slice = batch.slice(i, i + 2000);
       try {
-        await tx.insert(performanceData).values(slice);
+        await tx.insert(performanceData).values(slice).onConflictDoNothing();
       } catch (e: any) {
         throw new Error(
           `Batch insert error (suspension ${fileKey}, rows ${i}..${i + slice.length}): ${e.message}`,
