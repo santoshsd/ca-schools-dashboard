@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { env } from "./env";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import cors from "cors";
+import helmet from "helmet";
 
 const app = express();
 const httpServer = createServer(app);
