@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthAdapter, getIsAuthenticated } from "./auth-adapter";
+import { env } from "./env";
 import { createHash, randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import rateLimit from "express-rate-limit";
@@ -451,7 +452,7 @@ export async function registerRoutes(
   // are disabled entirely (503). Requests must include the header
   //   X-Admin-Secret: <value>
   // in addition to a valid session cookie.
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = env.ADMIN_SECRET;
 
   function isAdminSecret(req: Request, res: Response, next: NextFunction) {
     if (!adminSecret) {
@@ -473,10 +474,17 @@ export async function registerRoutes(
     res.json({ status: "started" });
 
     // Fire-and-forget: run ingestion in the background.
-    const { runFullIngestion } = await import("./ingest-cde-data");
-    runFullIngestion()
-      .catch((e) => console.error("[Admin] Ingestion failed:", e))
-      .finally(() => { ingestionRunning = false; });
+    // Guard the dynamic import so ingestionRunning is always cleared on failure.
+    (async () => {
+      try {
+        const { runFullIngestion } = await import("./ingest-cde-data");
+        await runFullIngestion();
+      } catch (e) {
+        console.error("[Admin] Ingestion failed:", e);
+      } finally {
+        ingestionRunning = false;
+      }
+    })();
   });
 
   app.get("/api/admin/ingest/status", isAuthenticated, isAdminSecret, async (_req, res) => {
