@@ -34,6 +34,10 @@ const envSchema = z.object({
   // Comma-separated list of CORS origins for the authenticated dashboard.
   // The public /api/v1/* endpoints use Bearer auth and are exempt.
   CORS_ALLOWED_ORIGINS: z.string().optional(),
+
+  // Admin secret for the data ingestion trigger endpoint.
+  // If not set, the /api/admin/* endpoints are disabled (503).
+  ADMIN_SECRET: z.string().min(8, "ADMIN_SECRET must be at least 8 characters").optional(),
 });
 
 function parseEnv() {
