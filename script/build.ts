@@ -6,7 +6,6 @@ import { rm, readFile } from "fs/promises";
 // which helps cold start times
 const allowlist = [
   "@google/generative-ai",
-  "argon2",
   "axios",
   "connect-pg-simple",
   "cors",
@@ -14,9 +13,7 @@ const allowlist = [
   "drizzle-orm",
   "drizzle-zod",
   "express",
-  "express-rate-limit",
   "express-session",
-  "helmet",
   "jsonwebtoken",
   "memorystore",
   "multer",
@@ -64,7 +61,16 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: [
+      ...externals,
+      "@mapbox/node-pre-gyp",
+      "mock-aws-s3",
+      "aws-sdk",
+      "nock",
+    ],
+    loader: {
+      ".html": "text",
+    },
     logLevel: "info",
   });
 }
