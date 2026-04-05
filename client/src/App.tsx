@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/dashboard";
 import DocsPage from "@/pages/docs";
 import ExplorerPage from "@/pages/explorer";
 import AuthPage from "@/pages/auth";
+import AdminPage from "@/pages/admin";
 import { useAuth } from "@/hooks/use-auth";
 
 function HomePage() {
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/docs" component={DocsPage} />
       <Route path="/explorer" component={ExplorerPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );
