@@ -34,6 +34,11 @@ export async function setupVite(server: Server, app: Express) {
   app.use("/{*path}", async (req, res, next) => {
     const url = req.originalUrl;
 
+    // Skip /api/* paths — they are handled by registerRoutes() with JSON 404.
+    if (req.path.startsWith("/api/")) {
+      return res.status(404).json({ error: { code: "not_found", message: "API endpoint not found" } });
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,

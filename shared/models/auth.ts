@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // Session storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
@@ -27,3 +27,18 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Password credentials for the standalone (non-Replit) auth flow.
+// The hash column stores the full encoded hash string (e.g. an argon2id
+// PHC string like "$argon2id$v=19$m=19456,t=2,p=1$..."). For backwards
+// compatibility it may also contain a legacy "salt:sha256hex" value,
+// which is transparently upgraded to argon2 on next login.
+export const userPasswords = pgTable("user_passwords", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  passwordHash: text("password_hash").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type UserPassword = typeof userPasswords.$inferSelect;
