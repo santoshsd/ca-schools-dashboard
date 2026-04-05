@@ -6,6 +6,9 @@ import { createHash, randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import rateLimit from "express-rate-limit";
 
+// In-memory flag — one ingestion at a time per server process.
+let ingestionRunning = false;
+
 function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }
@@ -438,6 +441,48 @@ export async function registerRoutes(
     try {
       const logs = await storage.getIngestionLogs();
       res.json({ data: logs });
+    } catch (e) {
+      errorResponse(res, 500, "internal", "Internal server error");
+    }
+  });
+
+  // ── Admin routes ─────────────────────────────────────────────────────────
+  // Gated by ADMIN_SECRET env var. If the var is not set, the endpoints
+  // are disabled entirely (503). Requests must include the header
+  //   X-Admin-Secret: <value>
+  // in addition to a valid session cookie.
+  const adminSecret = process.env.ADMIN_SECRET;
+
+  function isAdminSecret(req: Request, res: Response, next: NextFunction) {
+    if (!adminSecret) {
+      return errorResponse(res, 503, "admin_disabled",
+        "Admin endpoints are disabled. Set the ADMIN_SECRET environment variable to enable them.");
+    }
+    const provided = req.headers["x-admin-secret"];
+    if (!provided || provided !== adminSecret) {
+      return errorResponse(res, 401, "invalid_admin_secret", "Invalid or missing admin secret.");
+    }
+    next();
+  }
+
+  app.post("/api/admin/ingest", isAuthenticated, isAdminSecret, async (_req, res) => {
+    if (ingestionRunning) {
+      return res.json({ status: "already_running" });
+    }
+    ingestionRunning = true;
+    res.json({ status: "started" });
+
+    // Fire-and-forget: run ingestion in the background.
+    const { runFullIngestion } = await import("./ingest-cde-data");
+    runFullIngestion()
+      .catch((e) => console.error("[Admin] Ingestion failed:", e))
+      .finally(() => { ingestionRunning = false; });
+  });
+
+  app.get("/api/admin/ingest/status", isAuthenticated, isAdminSecret, async (_req, res) => {
+    try {
+      const logs = await storage.getIngestionLogs(20);
+      res.json({ data: { running: ingestionRunning, logs } });
     } catch (e) {
       errorResponse(res, 500, "internal", "Internal server error");
     }
