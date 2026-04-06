@@ -4,10 +4,8 @@ import { Resend } from "resend";
 
 let connectionSettings: any;
 
-// The Resend shared test sender works when the recipient is a verified email
-// in the Resend account. For production use, verify your own domain at
-// https://resend.com/domains and update the from_email in the connector settings.
-const FALLBACK_FROM = "onboarding@resend.dev";
+// Verified sender domain configured in Resend.
+const VERIFIED_FROM = "no-reply@caschooldatahub.s13i.me";
 
 async function getResendCredentials(): Promise<{ apiKey: string; fromEmail: string }> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -37,11 +35,7 @@ async function getResendCredentials(): Promise<{ apiKey: string; fromEmail: stri
     throw new Error("Resend not connected");
   }
 
-  // Always use the shared Resend sender unless a custom verified domain
-  // is configured. The from_email connector setting holds the *intended*
-  // sender domain; if it hasn't been verified in Resend, the API rejects it.
-  // Switch to a verified domain at https://resend.com/domains when ready.
-  const fromEmail = FALLBACK_FROM;
+  const fromEmail = VERIFIED_FROM;
   return { apiKey: connectionSettings.settings.api_key, fromEmail };
 }
 
