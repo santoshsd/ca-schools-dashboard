@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, LogOut, RefreshCw, Play, ShieldAlert, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { isAdminUser } from "@/lib/admin";
 
 type IngestionLog = {
   id: number;
@@ -37,10 +38,15 @@ export default function AdminPage() {
   const [polling, setPolling] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (authLoading) return;
+    if (!isAuthenticated) {
       navigate("/auth");
+      return;
     }
-  }, [authLoading, isAuthenticated, navigate]);
+    if (!isAdminUser(user?.email)) {
+      navigate("/dashboard");
+    }
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   const statusQuery = useQuery<StatusResponse>({
     queryKey: ["/api/admin/ingest/status"],
@@ -97,7 +103,7 @@ export default function AdminPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/ingest/status"] });
   }
 
-  if (authLoading) {
+  if (authLoading || !isAdminUser(user?.email)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

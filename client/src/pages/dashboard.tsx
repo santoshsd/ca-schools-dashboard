@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Link } from "wouter";
+import { isAdminUser } from "@/lib/admin";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -83,9 +84,11 @@ export default function DashboardPage() {
             <Link href="/dashboard" className="text-foreground font-medium">Dashboard</Link>
             <Link href="/docs">Docs</Link>
             <Link href="/explorer">Explorer</Link>
-            <Link href="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors" data-testid="link-admin">
-              <ShieldAlert className="h-3.5 w-3.5" /> Admin
-            </Link>
+            {isAdminUser(user?.email) && (
+              <Link href="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors" data-testid="link-admin">
+                <ShieldAlert className="h-3.5 w-3.5" /> Admin
+              </Link>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {user?.profileImageUrl && (
@@ -324,11 +327,13 @@ data = res.json()["data"]`}</pre>
                   <Code2 className="h-4 w-4 mr-2" /> API Explorer
                 </Button>
               </Link>
-              <Link href="/admin">
-                <Button variant="outline" className="w-full justify-start" data-testid="button-go-admin">
-                  <ShieldAlert className="h-4 w-4 mr-2" /> Data Administration
-                </Button>
-              </Link>
+              {isAdminUser(user?.email) && (
+                <Link href="/admin">
+                  <Button variant="outline" className="w-full justify-start" data-testid="button-go-admin">
+                    <ShieldAlert className="h-4 w-4 mr-2" /> Data Administration
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
