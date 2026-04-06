@@ -10,6 +10,7 @@ import DocsPage from "@/pages/docs";
 import ExplorerPage from "@/pages/explorer";
 import AuthPage from "@/pages/auth";
 import AdminPage from "@/pages/admin";
+import ResetPasswordPage from "@/pages/reset-password";
 import { useAuth } from "@/hooks/use-auth";
 
 function HomePage() {
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/explorer" component={ExplorerPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,13 +1,14 @@
 import type { Express, RequestHandler } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import argon2 from "argon2";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
-import { users, userPasswords } from "@shared/schema";
+import { eq, sql, and, gt, isNull } from "drizzle-orm";
+import { users, userPasswords, passwordResetTokens } from "@shared/schema";
 import { env } from "./env";
+import { sendPasswordResetEmail } from "./email";
 
 // Strict password policy for new registrations / rotations.
 const credentialsSchema = z.object({
@@ -266,6 +267,112 @@ export async function setupAuthAdapter(app: Express) {
       firstName: session.claims?.first_name,
       lastName: session.claims?.last_name,
     });
+  });
+
+  // Ensure the password_reset_tokens table exists at boot.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    // Always return the same neutral response to prevent email enumeration.
+    const NEUTRAL = { message: "If an account with that email exists, you will receive a reset link shortly." };
+
+    try {
+      const parsed = z.object({ email: z.string().trim().toLowerCase().email() }).safeParse(req.body);
+      if (!parsed.success) return res.json(NEUTRAL);
+
+      const { email } = parsed.data;
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      if (!user) return res.json(NEUTRAL);
+
+      // Generate a cryptographically random token.
+      const rawToken = randomBytes(32).toString("hex");
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt });
+
+      // Build the reset URL. In production use the request origin; fall back to localhost.
+      const origin = env.NODE_ENV === "production"
+        ? `${req.protocol}://${req.get("host")}`
+        : "http://localhost:5000";
+      const resetUrl = `${origin}/reset-password?token=${rawToken}`;
+
+      await sendPasswordResetEmail(email, resetUrl).catch((e) => {
+        console.error("[Auth] Failed to send reset email:", e?.message ?? e);
+      });
+
+      return res.json(NEUTRAL);
+    } catch (e: any) {
+      console.error("Forgot-password error:", e?.message ?? e);
+      return res.json({ message: "If an account with that email exists, you will receive a reset link shortly." });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const parsed = z
+        .object({
+          token: z.string().min(1),
+          password: z.string().min(12, "Password must be at least 12 characters").max(1024),
+        })
+        .safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: { code: "invalid_input", message: parsed.error.issues[0]?.message ?? "Invalid input" },
+        });
+      }
+
+      const { token, password } = parsed.data;
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+
+      const [record] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.tokenHash, tokenHash),
+            isNull(passwordResetTokens.usedAt),
+            gt(passwordResetTokens.expiresAt, new Date()),
+          ),
+        );
+
+      if (!record) {
+        return res.status(400).json({
+          error: { code: "invalid_token", message: "This reset link is invalid or has expired. Please request a new one." },
+        });
+      }
+
+      const passwordHash = await hashPassword(password);
+
+      await db
+        .insert(userPasswords)
+        .values({ userId: record.userId, passwordHash })
+        .onConflictDoUpdate({
+          target: userPasswords.userId,
+          set: { passwordHash, updatedAt: new Date() },
+        });
+
+      // Mark token as used so it can't be replayed.
+      await db
+        .update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(passwordResetTokens.id, record.id));
+
+      return res.json({ message: "Password updated successfully. You can now sign in." });
+    } catch (e: any) {
+      console.error("Reset-password error:", e?.message ?? e);
+      return res.status(500).json({ error: { code: "internal", message: "Password reset failed. Please try again." } });
+    }
   });
 
   app.get("/api/login", (_req, res) => {
