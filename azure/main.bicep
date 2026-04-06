@@ -97,7 +97,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.properties.loginServer}/cadashboard:latest'
       alwaysOn: true
-      healthCheckPath: '/api/health'
+      healthCheckPath: '/api/healthz'
       appSettings: [
         {
           name: 'DATABASE_URL'

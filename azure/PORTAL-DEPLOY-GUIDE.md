@@ -17,7 +17,7 @@ Azure Cloud Shell is a terminal built into the Azure Portal. It already has Azur
 
 3. **Clone your project** into Cloud Shell:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ca-school-dashboard.git
+   git clone https://github.com/santoshsd/ca-schools-dashboard.git
    cd ca-school-dashboard
    ```
    *(Replace with your actual GitHub repo URL. If you haven't pushed to GitHub yet, see "Getting Your Code to GitHub" below.)*
@@ -122,13 +122,13 @@ If you prefer using the Portal interface directly:
 1. Open Cloud Shell (top-right `>_` icon)
 2. Clone your repo and build:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ca-school-dashboard.git
+   git clone https://github.com/santoshsd/ca-schools-dashboard.git
    cd ca-school-dashboard
    npm ci && npm run build
    ```
 3. Create and deploy a ZIP:
    ```bash
-   cd dist && zip -r ../deploy.zip . ../node_modules ../package.json ../shared && cd ..
+   cd dist && zip -r ../deploy.zip . ../node_modules ../package.json ../shared ../migrations ../drizzle.config.ts && cd ..
    az webapp deploy --resource-group ca-school-dashboard-rg --name YOUR_APP_NAME --src-path deploy.zip --type zip
    ```
 
@@ -172,7 +172,7 @@ If your code is only on Replit and you need to push it to GitHub:
 
 Or from Replit's Shell:
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/ca-school-dashboard.git
+git remote add origin https://github.com/santoshsd/ca-schools-dashboard.git
 git push -u origin main
 ```
 
@@ -195,4 +195,4 @@ git push -u origin main
 - **App shows "Application Error"**: Check App Service → Diagnose and solve problems → Application Logs
 - **Database connection fails**: Verify the DATABASE_URL in Environment variables, ensure the firewall allows Azure services
 - **502 Bad Gateway**: Check the startup command is `node dist/index.cjs` and PORT is `8080`
-- **Health check**: Visit `https://YOUR_APP.azurewebsites.net/api/health` — should return `{"status":"healthy"}`
+- **Health check**: Visit `https://YOUR_APP.azurewebsites.net/api/healthz` — should return `{"status":"ok"}`

@@ -24,7 +24,7 @@ if [ -z "${SESSION_SECRET:-}" ]; then
   echo "Generated session secret automatically."
 fi
 
-REPO_URL="${REPO_URL:-https://github.com/YOUR_USERNAME/ca-school-dashboard.git}"
+REPO_URL="${REPO_URL:-https://github.com/santoshsd/ca-schools-dashboard.git}"
 
 echo ""
 echo "Configuration:"
@@ -55,6 +55,8 @@ echo "  App: $APP_NAME"
 echo "  URL: $APP_URL"
 echo "  DB:  $PG_HOST"
 
+DATABASE_URL="postgresql://csdadmin:${DB_PASSWORD}@${PG_HOST}:5432/cadashboard?sslmode=require"
+
 echo ""
 echo "Step 3: Building the application..."
 npm ci
@@ -63,7 +65,7 @@ npm run build
 echo ""
 echo "Step 4: Deploying code to App Service..."
 cd dist
-zip -r ../deploy.zip . ../node_modules ../package.json ../shared
+zip -r ../deploy.zip . ../node_modules ../package.json ../shared ../migrations ../drizzle.config.ts
 cd ..
 az webapp deploy \
   --resource-group "$RESOURCE_GROUP" \
@@ -72,13 +74,34 @@ az webapp deploy \
   --type zip
 
 echo ""
-echo "Step 5: Pushing database schema..."
-DATABASE_URL="postgresql://csdadmin:${DB_PASSWORD}@${PG_HOST}:5432/cadashboard?sslmode=require"
+echo "Step 5: Pushing database schema (Drizzle)..."
 DATABASE_URL="$DATABASE_URL" npx drizzle-kit push
 
 echo ""
-echo "Step 6: Restarting app..."
+echo "Step 6: Applying P1 schema constraints (indexes, FKs, CHECK)..."
+# The CONCURRENTLY index creation commands cannot run inside a transaction,
+# so we split the migration: first the CONCURRENTLY parts, then the rest.
+# psql handles this correctly when the file uses BEGIN/COMMIT for the
+# transactional parts and top-level statements for CONCURRENTLY.
+if command -v psql &>/dev/null; then
+  PGPASSWORD="$DB_PASSWORD" psql \
+    -h "$PG_HOST" -U csdadmin -d cadashboard \
+    -f migrations/0001_p1_schema_constraints.sql
+else
+  echo "  psql not found in Cloud Shell. Run the migration manually:"
+  echo "  psql \"$DATABASE_URL\" -f migrations/0001_p1_schema_constraints.sql"
+fi
+
+echo ""
+echo "Step 7: Restarting app..."
 az webapp restart --name "$APP_NAME" --resource-group "$RESOURCE_GROUP"
+
+echo ""
+echo "Step 8: Waiting for app to start..."
+sleep 10
+echo "  Checking health..."
+HEALTH=$(curl -sf "${APP_URL}/api/healthz" 2>/dev/null || echo '{"status":"unreachable"}')
+echo "  Health response: $HEALTH"
 
 echo ""
 echo "============================================="
@@ -86,27 +109,42 @@ echo " DEPLOYMENT COMPLETE"
 echo "============================================="
 echo ""
 echo "Your app is live at: $APP_URL"
+echo "Health check:        ${APP_URL}/api/healthz"
 echo ""
 echo "============================================="
-echo " CUSTOM DOMAIN SETUP (cadashboard.s13i.me)"
+echo " NEXT STEPS"
 echo "============================================="
 echo ""
-echo "1. Go to your DNS provider for s13i.me"
-echo "2. Add a CNAME record:"
-echo "     Name: cadashboard"
+echo "1. Register a user account:"
+echo "   Open ${APP_URL} and click 'Sign Up'"
+echo ""
+echo "2. Create an API key in the Dashboard"
+echo ""
+echo "3. Test the API:"
+echo "   curl -H 'Authorization: Bearer YOUR_API_KEY' ${APP_URL}/api/v1/counties"
+echo ""
+echo "4. Trigger data ingestion (from Cloud Shell):"
+echo "   DATABASE_URL=\"$DATABASE_URL\" npx tsx server/ingest-cde-data.ts"
+echo ""
+echo "============================================="
+echo " CUSTOM DOMAIN SETUP"
+echo "============================================="
+echo ""
+echo "1. Add a CNAME DNS record at your registrar:"
+echo "     Name: cadashboard (or your subdomain)"
 echo "     Value: $(echo $APP_URL | sed 's|https://||')"
 echo ""
-echo "3. Then run these commands to add the domain:"
-echo ""
+echo "2. Add the custom domain in Azure:"
 echo "   az webapp config hostname add \\"
 echo "     --webapp-name $APP_NAME \\"
 echo "     --resource-group $RESOURCE_GROUP \\"
-echo "     --hostname cadashboard.s13i.me"
+echo "     --hostname YOUR_DOMAIN"
 echo ""
+echo "3. Enable free managed SSL:"
 echo "   az webapp config ssl create \\"
 echo "     --name $APP_NAME \\"
 echo "     --resource-group $RESOURCE_GROUP \\"
-echo "     --hostname cadashboard.s13i.me"
+echo "     --hostname YOUR_DOMAIN"
 echo ""
 echo "============================================="
 echo " CREDENTIALS (save these somewhere safe)"
@@ -115,5 +153,6 @@ echo ""
 echo "  DB Host: $PG_HOST"
 echo "  DB User: csdadmin"
 echo "  DB Pass: (the password you entered)"
+echo "  DB URL:  postgresql://csdadmin:***@${PG_HOST}:5432/cadashboard?sslmode=require"
 echo "  Session Secret: $SESSION_SECRET"
 echo ""

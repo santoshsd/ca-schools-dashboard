@@ -1,0 +1,45 @@
+# Local development / staging environment.
+# Usage:
+#   docker compose up -d db         # start only Postgres
+#   docker compose up                # start Postgres + app (production build)
+#   docker compose --profile dev up  # start Postgres only, run app via npm run dev
+#
+# First run:
+#   docker compose up -d db
+#   npm run db:push                  # create tables
+#   npm run dev                      # start the dev server
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cadashboard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/cadashboard
+      SESSION_SECRET: local-dev-secret-at-least-32-characters-long
+      PORT: "8080"
+      NODE_ENV: production
+
+volumes:
+  pgdata:

@@ -79,7 +79,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
     siteConfig: {
       linuxFxVersion: 'NODE|20-lts'
       alwaysOn: false
-      healthCheckPath: '/api/health'
+      healthCheckPath: '/api/healthz'
       appCommandLine: 'node dist/index.cjs'
       appSettings: [
         {
