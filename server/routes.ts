@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuthAdapter, getIsAuthenticated } from "./auth-adapter";
 import { env } from "./env";
 import { isIngestionRunning, setIngestionRunning } from "./ingestion-state";
+import { sendTestEmail } from "./email";
 import { createHash, randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import rateLimit from "express-rate-limit";
@@ -491,6 +492,19 @@ export async function registerRoutes(
       res.json({ data: { running: isIngestionRunning(), logs } });
     } catch (e) {
       errorResponse(res, 500, "internal", "Internal server error");
+    }
+  });
+
+  app.post("/api/admin/test-email", isAuthenticated, isAdminSecret, async (req, res) => {
+    try {
+      const parsed = z.object({ to: z.string().email() }).safeParse(req.body);
+      if (!parsed.success) {
+        return errorResponse(res, 400, "invalid_input", "A valid recipient email is required");
+      }
+      const result = await sendTestEmail(parsed.data.to);
+      res.json(result);
+    } catch (e: any) {
+      res.json({ ok: false, message: e?.message ?? String(e) });
     }
   });
 
