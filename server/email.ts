@@ -27,7 +27,7 @@ export async function sendPasswordResetEmail(
       <h2 style="margin: 0 0 8px; color: #1e293b;">Password Reset</h2>
       <p style="color: #475569; margin: 0 0 24px;">
         We received a request to reset your password for your CA School Data Hub account.
-        Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.
+        Click the button below to choose a new password. This link expires in <strong>10 minutes</strong>.
       </p>
       <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600;">
         Reset Password
@@ -41,7 +41,7 @@ export async function sendPasswordResetEmail(
       </p>
     </div>
   `;
-  const text = `Reset your CA School Data Hub password\n\nVisit this link to choose a new password (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
+  const text = `Reset your CA School Data Hub password\n\nVisit this link to choose a new password (expires in 10 minutes):\n\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
 
   if (!isSmtpConfigured()) {
     console.log("\n[Email — SMTP not configured, printing to console]");

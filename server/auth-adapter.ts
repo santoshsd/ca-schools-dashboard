@@ -296,7 +296,7 @@ export async function setupAuthAdapter(app: Express) {
       // Generate a cryptographically random token.
       const rawToken = randomBytes(32).toString("hex");
       const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       await db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt });
 
