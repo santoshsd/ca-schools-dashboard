@@ -23,7 +23,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
   name: 'csd-pg-${nameSuffix}'
   location: location
   sku: {
-    name: 'Standard_B1ms'
+    name: 'Standard_B2'
     tier: 'Burstable'
   }
   properties: {
