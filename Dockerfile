@@ -33,8 +33,7 @@ COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 EXPOSE 8080
 ENV PORT=8080
 
-# Azure App Service health probe expects response within 300s of container start.
-# The Node.js server starts in <2s.
+# Health probe: the Node.js server starts in <2s.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://localhost:8080/api/healthz').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))"
 

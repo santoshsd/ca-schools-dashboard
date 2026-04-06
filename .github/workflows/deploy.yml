@@ -1,0 +1,78 @@
+# Deploy CA School Dashboard to Railway
+#
+# Required GitHub Secrets:
+#   RAILWAY_TOKEN   - Railway API token (from railway.app > Account > Tokens)
+#   DATABASE_URL    - PostgreSQL connection string (from Railway PostgreSQL plugin)
+#
+# Railway automatically detects the Dockerfile and builds the image.
+# The PostgreSQL plugin provisions a managed database with backups.
+
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Run database migrations
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Push schema
+        run: npx drizzle-kit push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Health check
+        run: |
+          sleep 15
+          APP_URL="${{ vars.RAILWAY_PUBLIC_URL }}"
+          if [ -z "$APP_URL" ]; then
+            echo "RAILWAY_PUBLIC_URL not set — skipping health check"
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            HEALTH=$(curl -sf "$APP_URL/api/healthz" 2>/dev/null || echo "")
+            if [ -n "$HEALTH" ]; then
+              echo "Health check passed: $HEALTH"
+              exit 0
+            fi
+            echo "Attempt $i: waiting for app to start..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
