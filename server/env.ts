@@ -39,13 +39,8 @@ const envSchema = z.object({
   // If not set, the /api/admin/* endpoints are disabled (503).
   ADMIN_SECRET: z.string().min(8, "ADMIN_SECRET must be at least 8 characters").optional(),
 
-  // SMTP settings for transactional email (password resets, etc.).
-  // All optional: if absent the server logs reset links to stdout instead.
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().optional().transform((v) => (v ? parseInt(v, 10) : 587)),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().optional().default("noreply@caschooldatahub.s13i.me"),
+  // Resend connector injects credentials via REPLIT_CONNECTORS_HOSTNAME / REPL_IDENTITY.
+  // These are Replit-managed and require no manual configuration.
 });
 
 function parseEnv() {
