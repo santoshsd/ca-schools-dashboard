@@ -3,12 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuthAdapter, getIsAuthenticated } from "./auth-adapter";
 import { env } from "./env";
+import { isIngestionRunning, setIngestionRunning } from "./ingestion-state";
 import { createHash, randomBytes } from "crypto";
 import { z, ZodError } from "zod";
 import rateLimit from "express-rate-limit";
-
-// In-memory flag — one ingestion at a time per server process.
-let ingestionRunning = false;
 
 function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
@@ -467,14 +465,14 @@ export async function registerRoutes(
   }
 
   app.post("/api/admin/ingest", isAuthenticated, isAdminSecret, async (_req, res) => {
-    if (ingestionRunning) {
+    if (isIngestionRunning()) {
       return res.json({ status: "already_running" });
     }
-    ingestionRunning = true;
+    setIngestionRunning(true);
     res.json({ status: "started" });
 
     // Fire-and-forget: run ingestion in the background.
-    // Guard the dynamic import so ingestionRunning is always cleared on failure.
+    // Guard the dynamic import so the lock is always cleared on failure.
     (async () => {
       try {
         const { runFullIngestion } = await import("./ingest-cde-data");
@@ -482,7 +480,7 @@ export async function registerRoutes(
       } catch (e) {
         console.error("[Admin] Ingestion failed:", e);
       } finally {
-        ingestionRunning = false;
+        setIngestionRunning(false);
       }
     })();
   });
@@ -490,7 +488,7 @@ export async function registerRoutes(
   app.get("/api/admin/ingest/status", isAuthenticated, isAdminSecret, async (_req, res) => {
     try {
       const logs = await storage.getIngestionLogs(20);
-      res.json({ data: { running: ingestionRunning, logs } });
+      res.json({ data: { running: isIngestionRunning(), logs } });
     } catch (e) {
       errorResponse(res, 500, "internal", "Internal server error");
     }
