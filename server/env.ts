@@ -39,8 +39,9 @@ const envSchema = z.object({
   // If not set, the /api/admin/* endpoints are disabled (503).
   ADMIN_SECRET: z.string().min(8, "ADMIN_SECRET must be at least 8 characters").optional(),
 
-  // Resend connector injects credentials via REPLIT_CONNECTORS_HOSTNAME / REPL_IDENTITY.
-  // These are Replit-managed and require no manual configuration.
+  // Resend API key for transactional emails (password resets, etc.).
+  // Optional; if not set, emails are logged to console instead.
+  RESEND_API_KEY: z.string().optional(),
 });
 
 function parseEnv() {
