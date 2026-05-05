@@ -2,8 +2,12 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
+// Server deps to bundle to reduce openat(2) syscalls and improve cold-start.
+//
+// IMPORTANT: Native modules (those shipping a .node binary via node-pre-gyp or
+// node-gyp) must NOT be added here.  esbuild cannot bundle them because they
+// pull in optional peer deps and non-JS assets.
+// Known native deps that must stay external: argon2, bufferutil, bcrypt, sharp.
 const allowlist = [
   "@google/generative-ai",
   "axios",
@@ -13,7 +17,9 @@ const allowlist = [
   "drizzle-orm",
   "drizzle-zod",
   "express",
+  "express-rate-limit",
   "express-session",
+  "helmet",
   "jsonwebtoken",
   "memorystore",
   "multer",
@@ -61,6 +67,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
+    // argon2 is a native module; its transitive deps must also be external.
     external: [
       ...externals,
       "@mapbox/node-pre-gyp",

@@ -15,6 +15,36 @@ declare module "http" {
   }
 }
 
+// Security headers — helmet sets Strict-Transport-Security, X-Content-Type-Options,
+// X-Frame-Options, etc.  contentSecurityPolicy is relaxed to allow the SPA's inline
+// scripts and styles; tighten once a nonce/hash pipeline is in place.
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // SPA uses inline scripts; enable after adding nonce support
+    crossOriginEmbedderPolicy: false, // allows loading external fonts / images
+  }),
+);
+
+// CORS — restrict dashboard cookie-authenticated endpoints to known origins.
+// The public /api/v1/* Bearer-token endpoints are origin-agnostic.
+const allowedOrigins = env.CORS_ALLOWED_ORIGINS
+  ? env.CORS_ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, mobile apps).
+      if (!origin) return callback(null, true);
+      // Allow any origin when no explicit allow-list is configured (dev convenience).
+      if (allowedOrigins.length === 0) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    credentials: true, // allow session cookies
+  }),
+);
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {

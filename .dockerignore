@@ -2,7 +2,7 @@ node_modules
 dist
 .git
 .env
-*.md
+.env.*
 .local
-migrations
 attached_assets
+analysis

@@ -1,48 +1,16 @@
-// Email delivery via Replit Resend integration.
-// Falls back to console.log when the integration credentials are unavailable (local dev without connector).
+// Email delivery via Resend.
+// Falls back to console.log when RESEND_API_KEY is not set (local dev).
 import { Resend } from "resend";
-
-let connectionSettings: any;
 
 // Verified sender domain configured in Resend.
 const VERIFIED_FROM = "no-reply@caschooldatahub.s13i.me";
 
-async function getResendCredentials(): Promise<{ apiKey: string; fromEmail: string }> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY
-    ? "repl " + process.env.REPL_IDENTITY
-    : process.env.WEB_REPL_RENEWAL
-    ? "depl " + process.env.WEB_REPL_RENEWAL
-    : null;
-
-  if (!hostname || !xReplitToken) {
-    throw new Error("Resend connector not available in this environment");
+function getResendClient(): { client: Resend; fromEmail: string } {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY environment variable is not set");
   }
-
-  connectionSettings = await fetch(
-    "https://" + hostname + "/api/v2/connection?include_secrets=true&connector_names=resend",
-    {
-      headers: {
-        Accept: "application/json",
-        "X-Replit-Token": xReplitToken,
-      },
-    },
-  )
-    .then((r) => r.json())
-    .then((data) => data.items?.[0]);
-
-  if (!connectionSettings?.settings?.api_key) {
-    throw new Error("Resend not connected");
-  }
-
-  const fromEmail = VERIFIED_FROM;
-  return { apiKey: connectionSettings.settings.api_key, fromEmail };
-}
-
-// WARNING: Never cache this client — tokens expire.
-async function getUncachableResendClient() {
-  const creds = await getResendCredentials();
-  return { client: new Resend(creds.apiKey), fromEmail: creds.fromEmail };
+  return { client: new Resend(apiKey), fromEmail: VERIFIED_FROM };
 }
 
 // Build a "Name <email>" sender string.
@@ -79,7 +47,7 @@ export async function sendPasswordResetEmail(
   const text = `Reset your CA School Data Hub password\n\nVisit this link to choose a new password (expires in 10 minutes):\n\n${resetUrl}\n\nIf you didn't request this, ignore this email.`;
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = getResendClient();
     const result = await client.emails.send({
       from: buildFrom(fromEmail),
       to: toEmail,
@@ -102,7 +70,7 @@ export async function sendPasswordResetEmail(
 
 export async function sendTestEmail(toEmail: string): Promise<{ ok: boolean; message: string }> {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = getResendClient();
     const result = await client.emails.send({
       from: buildFrom(fromEmail),
       to: toEmail,
