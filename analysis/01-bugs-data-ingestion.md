@@ -303,5 +303,5 @@ Minimum viable fix set to make ingestion safe:
 7. Discover year file-keys dynamically.
 8. Raise batch sizes to 1 k–5 k.
 
-The production re-ingest runbook in [`07-reingest-runbook.md`](./07-reingest-runbook.md)
-assumes at minimum fixes #1, #2, and #4 have landed.
+Any production re-ingest runbook should assume at minimum fixes #1, #2, and #4
+have landed.
