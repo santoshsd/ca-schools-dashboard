@@ -1,8 +1,15 @@
 # Deploy CA School Dashboard to Railway
 #
 # Required GitHub Secrets:
-#   RAILWAY_TOKEN   - Railway API token (from railway.app > Account > Tokens)
-#   DATABASE_URL    - PostgreSQL connection string (from Railway PostgreSQL plugin)
+#   RAILWAY_TOKEN      - Railway API token (from railway.app > Account > Tokens)
+#   DATABASE_URL       - PostgreSQL connection string (from Railway PostgreSQL plugin)
+#
+# Required GitHub Variables:
+#   RAILWAY_SERVICE    - Railway service name or service ID to deploy
+#
+# Optional GitHub Variables:
+#   RAILWAY_ENVIRONMENT - Railway environment name/ID (defaults to production)
+#   RAILWAY_PUBLIC_URL  - Public URL for post-deploy health checks
 #
 # Railway automatically detects the Dockerfile and builds the image.
 # The PostgreSQL plugin provisions a managed database with backups.
@@ -42,9 +49,12 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway
-        run: railway up --detach
+        run: |
+          railway up --detach --service "$RAILWAY_SERVICE" --environment "${RAILWAY_ENVIRONMENT:-production}"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+          RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT }}
 
       - name: Run database migrations
         uses: actions/setup-node@v4

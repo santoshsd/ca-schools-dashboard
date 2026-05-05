@@ -35,11 +35,12 @@ Railway deploys directly from your GitHub repository using the included Dockerfi
    |------|-------|
    | `SESSION_SECRET` | Run `openssl rand -hex 32` and paste the result |
    | `NODE_ENV` | `production` |
-   | `PORT` | `8080` |
 
 4. Railway redeploys automatically when variables change
 
 ### 4. Run Database Migrations
+
+This step is required before first use of API/auth endpoints.
 
 Using the [Railway CLI](https://docs.railway.app/guides/cli):
 
@@ -94,10 +95,17 @@ The included `.github/workflows/deploy.yml` automates deployment on push to `mai
 | `RAILWAY_TOKEN` | [railway.app](https://railway.app) → Account → Tokens → Create Token |
 | `DATABASE_URL` | Railway project → PostgreSQL service → Variables → `DATABASE_URL` |
 
+### Required GitHub Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `RAILWAY_SERVICE` | Railway service name or service ID to deploy |
+
 ### Optional GitHub Variables
 
 | Variable | Purpose |
 |----------|---------|
+| `RAILWAY_ENVIRONMENT` | Environment name/ID for deploy (default: `production`) |
 | `RAILWAY_PUBLIC_URL` | Your app's public URL (for health checks), e.g. `https://your-app.up.railway.app` |
 
 ---
